@@ -33,20 +33,26 @@ def build_graph_from_atoms(atoms, distance_threshold=10.0):
     return G
 
 # Folder with your PDB files
-pdb_folder = Path("path/to/your/folder")  # CHANGE THIS!
+pdb_folder = Path(".\\structures\\structures\\af_negatives")  # your folder path
 
-# Loop over files and build graphs
+# Search recursively in subfolders
+pdb_files = list(pdb_folder.rglob("*.pdb"))
+print(f"Found {len(pdb_files)} PDB files")
+
 graphs = []
-for pdb_file in pdb_folder.glob("*.pdb"):
+for pdb_file in pdb_files:
     atoms = parse_ca_atoms(pdb_file)
     G = build_graph_from_atoms(atoms)
     graphs.append((pdb_file.name, G))
 
-# Example visualization
-name, G = graphs[0]
-plt.figure(figsize=(10, 8))
-pos = nx.spring_layout(G, seed=42)
-nx.draw(G, pos, node_size=30, node_color='skyblue', edge_color='gray')
-plt.title(f"Graph view of {name}")
-plt.axis('off')
-plt.show()
+# Visualize first one
+if graphs:
+    name, G = graphs[0]
+    pos = nx.spring_layout(G, seed=42)
+    plt.figure(figsize=(10, 8))
+    nx.draw(G, pos, node_size=30, node_color='skyblue', edge_color='gray')
+    plt.title(f"Graph view of {name}")
+    plt.axis('off')
+    plt.show()
+else:
+    print("No graphs were created. Check file contents.")

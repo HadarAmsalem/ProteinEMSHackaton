@@ -8,6 +8,24 @@ from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
+def prepare_gnn_input(data, model): 
+    """ Prepares the input dictionary for various GNN models. Supports GCN, EGNN """ 
+    kwargs = { 'x': data.x, 'edge_index': data.edge_index, } 
+    if hasattr(data, 'batch'): 
+        kwargs['batch'] = data.batch
+
+    model_name = model.__class__.__name__.upper()    
+
+    if model_name == "EGNN":
+        if hasattr(data, 'edge_attr'):
+            kwargs['edge_attr'] = data.edge_attr
+        if hasattr(data, 'pos'):
+            kwargs['pos'] = data.pos
+    elif model_name == "GCN":
+        pass
+
+    return kwargs
+
 def train(model, train_loader, val_loader, epochs=100, lr=1e-3, patience=10, save_path="Hackaton/best_model.pth"):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
@@ -24,15 +42,8 @@ def train(model, train_loader, val_loader, epochs=100, lr=1e-3, patience=10, sav
         for data in loop:
             data = data.to(device)
             optimizer.zero_grad()
-            # Dynamically handle model signatures
-            kwargs = {'x': data.x, 'edge_index': data.edge_index}
-            if hasattr(data, 'edge_attr') and model.__class__.__name__ != "GCN":
-                kwargs['edge_attr'] = data.edge_attr
-            if hasattr(data, 'pos') and model.__class__.__name__ == "EGNN":
-                kwargs['pos'] = data.pos
-            if hasattr(data, 'batch'):
-                kwargs['batch'] = data.batch
-            out = model(**kwargs)
+            input_dict = prepare_gnn_input(data, model)
+            out = model(**input_dict)
             loss = F.nll_loss(out, data.y)
             loss.backward()
             optimizer.step()
@@ -173,7 +184,7 @@ def main(model_type="EGNN"):
     patience = 10
 
     dataset = load_dataset()
-    torch.manual_seed(42)
+    # torch.manual_seed(42)
     labels = [d.y.item() for d in dataset]
     train_set, temp_set = train_test_split(dataset, test_size=0.3, stratify=labels, random_state=42)
     labels_temp = [d.y.item() for d in temp_set]

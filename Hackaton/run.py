@@ -8,7 +8,6 @@ from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-
 def train(model, train_loader, val_loader, epochs=100, lr=1e-3, patience=10, save_path="Hackaton/best_model.pth"):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
@@ -105,18 +104,19 @@ def evaluate(model, loader, device, plot_roc=True, roc_output_path="Hackaton/roc
     return avg_loss, acc
 
 from PDB_to_graph_embbeding import parse_pdb_to_graph
-import os
-import torch
 
-def load_dataset():
+def load_dataset(cache_path="DB/cached_dataset.pt"):
     """
-    Loads all PDB files from 'dataset/positives' and 'dataset/negatives' directories.
-    Each file is parsed using parse_pdb_to_graph and labeled accordingly.
+    Loads all PDB files from 'structures/af_positives' and 'structures/af_negatives' directories.
+    If a cached dataset file exists, it will load from it instead of parsing the PDB files.
     Returns a list of PyTorch Geometric Data objects.
     """
+    if os.path.exists(cache_path):
+        print(f"Loading dataset from cache: {cache_path}")
+        return torch.load(cache_path)
+
     dataset = []
     base_dir = "structures"  # Adjust this path to your dataset directory
-
     label_map = {
         "af_negatives": 0,
         "af_positives": 1
@@ -133,7 +133,11 @@ def load_dataset():
                 dataset.append(graph)
             except Exception as e:
                 print(f"Skipping {path} due to error: {e}")
+
+    torch.save(dataset, cache_path)
+    print(f"Dataset cached to {cache_path}")
     return dataset
+
 
 def plot_roc_curve(y_test, y_scores, out_file_path="roc_curve.png"):
     """
@@ -160,8 +164,14 @@ def plot_roc_curve(y_test, y_scores, out_file_path="roc_curve.png"):
     plt.grid(True)
     plt.savefig(out_file_path)
 
+def main(model_type="EGNN"):
+    # === Hyperparameters ===
+    batch_size = 64
+    epochs = 100
+    lr = 1e-3
+    hidden_dim = 64
+    patience = 10
 
-def main(model_type="EGNN"):  # "GCN" or "EGNN"
     dataset = load_dataset()
     torch.manual_seed(42)
     labels = [d.y.item() for d in dataset]
@@ -170,39 +180,33 @@ def main(model_type="EGNN"):  # "GCN" or "EGNN"
     val_set, test_set = train_test_split(temp_set, test_size=0.5, stratify=labels_temp, random_state=42)
     print(f"Dataset sizes - Train: {len(train_set)}, Val: {len(val_set)}, Test: {len(test_set)}")
 
-    batch_size = 32
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
 
-    # === Model selection ===
     num_features = train_set[0].x.shape[1]
     edge_feat_dim = train_set[0].edge_attr.shape[1] if hasattr(train_set[0], 'edge_attr') else 0
 
     if model_type == "GCN":
-        model = GCN(num_features=num_features, hidden_dim=64, num_classes=2)
+        model = GCN(num_features=num_features, hidden_dim=hidden_dim, num_classes=2)
         save_path = "Hackaton/best_gcn_model.pth"
     elif model_type == "EGNN":
-        model = EGNN(num_features=num_features, edge_feat_dim=edge_feat_dim, hidden_dim=64)
+        model = EGNN(num_features=num_features, edge_feat_dim=edge_feat_dim, hidden_dim=hidden_dim)
         save_path = "Hackaton/best_egnn_model.pth"
     else:
         raise ValueError("model_type must be 'GCN' or 'EGNN'")
 
-    # === Training or loading ===
     if os.path.exists(save_path):
         print(f"Loading model from {save_path}...")
         model.load_state_dict(torch.load(save_path))
     else:
         print("Training model from scratch...")
-        model = train(model, train_loader, val_loader, epochs=50, lr=1e-3, patience=7, save_path=save_path)
+        model = train(model, train_loader, val_loader, epochs=epochs, lr=lr, patience=patience, save_path=save_path)
         print(f"Best model saved to {save_path}")
 
-    # === Evaluation ===
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     test_loss, test_acc = evaluate(model, test_loader, device)
     print(f"Test Loss: {test_loss:.4f} | Test Accuracy: {test_acc:.3f}")
 
 if __name__ == "__main__":
-    # Run either model (pass "GCN" or "EGNN")
     main(model_type="EGNN")
-    # main(model_type="GCN")

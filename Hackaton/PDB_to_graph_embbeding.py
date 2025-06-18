@@ -90,66 +90,65 @@ def save_filtered_structure(original_structure, residues_to_keep, output_file):
     io.set_structure(original_structure)
     io.save(output_file, ResidueSelect(residues_to_keep))
 
-def parse_pdb_to_graph(pdb_path, visualize=False, chain_id='B', save_filtered_pdb=False):
-    """
-    Parse a PDB file and convert the filtered structure into a PyTorch Geometric graph.
-    
-    Steps:
-    - Filter the structure to include only chain B and nearby residues (within 15Å)
-    - Represent each residue as a node with a one-hot feature vector + NES flag
-    - Create edges between nodes based on 3D proximity (less than 8Å)
-    - Optionally plot the graph in 2D (XY plane)
+from esm_embeddings import get_esm_model, get_esm_embeddings
+from Bio.PDB.Polypeptide import PPBuilder
 
-    Returns:
-        torch_geometric.data.Data object
-    """
+def parse_pdb_to_graph(pdb_path, visualize=False, chain_id='B', save_filtered_pdb=False,
+                       use_esm=True, esm_embedding_size=1280, esm_layer=33):
     parser = PDBParser(QUIET=True)
     structure = parser.get_structure("protein", pdb_path)
 
-    # Filter structure
     filtered_residues = filter_structure_by_chain_and_proximity(structure, chain_id)
-    # Uncomment the next line to save the filtered structure to check if the cutoff works correctly
     filtered_file = "filtered_nes.pdb" 
     save_filtered_structure(structure, filtered_residues, filtered_file)
-
-    # Parse filtered structure
     structure = parser.get_structure("filtered", filtered_file)
     if not save_filtered_pdb:
         os.remove(filtered_file)
 
     ca_coords = []
-    node_features = []
     nes_flags = []
-
+    residue_list = []
+    aa_seq = ""
+    
     for model in structure:
         for chain in model:
             for residue in chain:
                 if 'CA' in residue:
-                    ca = residue['CA']
-                    ca_coords.append(ca.coord)
-                    one_hot = residue_to_one_hot(residue.get_resname())
-                    # Create a flag for NES residues (chain B)
+                    ca_coords.append(residue['CA'].coord)
                     nes_flag = 1.0 if chain.id == chain_id else 0.0
-                    
-                    node_features.append(np.concatenate([one_hot, [nes_flag]]))
                     nes_flags.append(nes_flag)
+                    residue_list.append(residue)
+                    aa_seq += residue.get_resname()
 
     ca_coords = np.array(ca_coords)
-    node_features = torch.tensor(node_features, dtype=torch.float)
     pos = torch.tensor(ca_coords, dtype=torch.float)
-    num_nodes = len(ca_coords)
 
+    if use_esm:
+        # Convert 3-letter codes to 1-letter codes
+        ppb = PPBuilder()
+        seq = str(ppb.build_peptides(structure[0][chain_id])[0].get_sequence())
+        esm_model, alphabet, batch_converter, device = get_esm_model(embedding_size=esm_embedding_size)
+        embeddings = get_esm_embeddings([("protein", seq)], esm_model, alphabet, batch_converter, device,
+                                        embedding_layer=esm_layer, sequence_embedding=False)[0]
+        node_features = torch.tensor(embeddings, dtype=torch.float)
+    else:
+        node_features = []
+        for residue, flag in zip(residue_list, nes_flags):
+            one_hot = residue_to_one_hot(residue.get_resname())
+            node_features.append(np.concatenate([one_hot, [flag]]))
+        node_features = torch.tensor(node_features, dtype=torch.float)
+
+    # Build edges
     edge_index = []
     edge_attr = []
-    for i in range(num_nodes):
-        for j in range(num_nodes):
+    for i in range(len(ca_coords)):
+        for j in range(len(ca_coords)):
             if i != j:
                 dist = np.linalg.norm(ca_coords[i] - ca_coords[j])
                 if dist < DISTANCE_THRESHOLD:
                     edge_index.append([i, j])
                     edge_attr.append([dist])
 
-    # Construct edges based on distance threshold
     edge_index = torch.tensor(edge_index, dtype=torch.long).t().contiguous()
     edge_attr = torch.tensor(edge_attr, dtype=torch.float)
 
@@ -159,6 +158,7 @@ def parse_pdb_to_graph(pdb_path, visualize=False, chain_id='B', save_filtered_pd
         plot_graph(data, nes_flags)
 
     return data
+
 
 def plot_graph(graph, nes_flags):
     """

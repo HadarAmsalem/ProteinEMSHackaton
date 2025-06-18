@@ -22,7 +22,7 @@ def plot_esm_amino_acids_embeddings(amino_acids_embeddings, out_file_path="heatm
     # Display plot
     plt.savefig(out_file_path)
 
-def plot_boxplot(data_dict, out_file_path="boxplot.png"):
+def plot_boxplot(data_dict, out_file_path="boxplot.png",title="Boxplot"):
     """
     Plots a boxplot of the negative and positive distances
     :param data_dict: Dictionary of positive and negative distances
@@ -41,14 +41,14 @@ def plot_boxplot(data_dict, out_file_path="boxplot.png"):
     # Adding labels and title
     plt.xlabel('Label')
     plt.ylabel('Score')
-    plt.title('Boxplot')
+    plt.title(title)
 
     # Display plot
     plt.grid(True)
     plt.savefig(out_file_path)
 
 
-def plot_roc_curve(y_test, y_scores, out_file_path="roc_curve.png"):
+def plot_roc_curve(y_test, y_scores, out_file_path="roc_curve.png",title="Receiver Operating Characteristic (ROC) Curve"):
     """
     Plots a ROC curve of the negative and positive distances
     :param y_test: True data labels (0 for negative, 1 for positive)
@@ -68,7 +68,7 @@ def plot_roc_curve(y_test, y_scores, out_file_path="roc_curve.png"):
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title('Receiver Operating Characteristic (ROC) Curve')
+    plt.title(title)
     plt.legend(loc="lower right")
     plt.grid(True)
     plt.savefig(out_file_path)

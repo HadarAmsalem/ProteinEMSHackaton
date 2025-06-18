@@ -1,4 +1,5 @@
 import os
+import sys
 import torch
 import torch.nn.functional as F
 from torch_geometric.data import DataLoader
@@ -7,6 +8,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from plot import plot_roc_curve, plot_boxplot
 
 def prepare_gnn_input(data, model): 
     """ Prepares the input dictionary for various GNN models. Supports GCN, EGNN """ 
@@ -176,56 +178,56 @@ def load_dataset(cache_path="DB/cached_dataset.pt"):
     return dataset
 
 
-def plot_roc_curve(y_test, y_scores, out_file_path="roc_curve.png"):
-    """
-    Plots a ROC curve of the negative and positive distances
-    :param y_test: True data labels (0 for negative, 1 for positive)
-    :param y_scores: Distances from the positive training peptides (multiplied by -1)
-    :param out_file_path: The path for the output png
-    """
-    fpr, tpr, thresholds = roc_curve(y_test, y_scores)
-    roc_auc = auc(fpr, tpr)
-    print(F"AUC: {roc_auc}")
+# def plot_roc_curve(y_test, y_scores, out_file_path="roc_curve.png"):
+#     """
+#     Plots a ROC curve of the negative and positive distances
+#     :param y_test: True data labels (0 for negative, 1 for positive)
+#     :param y_scores: Distances from the positive training peptides (multiplied by -1)
+#     :param out_file_path: The path for the output png
+#     """
+#     fpr, tpr, thresholds = roc_curve(y_test, y_scores)
+#     roc_auc = auc(fpr, tpr)
+#     print(F"AUC: {roc_auc}")
 
-    # Plot ROC curve
-    plt.figure(figsize=(8, 6))
-    plt.plot(fpr, tpr, color='darkorange', lw=2,
-             label=f'ROC curve (area = {roc_auc:.2f})')
-    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('ROC Curve – Evaluating Binary Classification of NES vs. non-NES Proteins')
-    plt.legend(loc="lower right")
-    plt.grid(True)
-    plt.savefig(out_file_path)
+#     # Plot ROC curve
+#     plt.figure(figsize=(8, 6))
+#     plt.plot(fpr, tpr, color='darkorange', lw=2,
+#              label=f'ROC curve (area = {roc_auc:.2f})')
+#     plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+#     plt.xlim([0.0, 1.0])
+#     plt.ylim([0.0, 1.05])
+#     plt.xlabel('False Positive Rate')
+#     plt.ylabel('True Positive Rate')
+#     plt.title('ROC Curve – Evaluating Binary Classification of NES vs. non-NES Proteins')
+#     plt.legend(loc="lower right")
+#     plt.grid(True)
+#     plt.savefig(out_file_path)
 
-def plot_boxplot(data_dict, out_file_path="boxplot.png"):
-    """
-    Plots a boxplot of the negative and positive distances
-    :param data_dict: Dictionary of positive and negative distances
-    :param out_file_path: The path for the output png
-    """
-    # Creating a list of data to plot
-    plot_data = [data_dict[key] for key in data_dict]
+# def plot_boxplot(data_dict, out_file_path="boxplot.png"):
+#     """
+#     Plots a boxplot of the negative and positive distances
+#     :param data_dict: Dictionary of positive and negative distances
+#     :param out_file_path: The path for the output png
+#     """
+#     # Creating a list of data to plot
+#     plot_data = [data_dict[key] for key in data_dict]
 
-    # Labels for x-axis ticks
-    labels = list(data_dict.keys())
+#     # Labels for x-axis ticks
+#     labels = list(data_dict.keys())
 
-    # Creating boxplot
-    plt.figure(figsize=(10, 6))
-    plt.boxplot(plot_data, patch_artist=True, labels=labels)
+#     # Creating boxplot
+#     plt.figure(figsize=(10, 6))
+#     plt.boxplot(plot_data, patch_artist=True, labels=labels)
 
-    # Adding labels and title
-    plt.xlabel('Label')
-    plt.ylabel('Score')
-    plt.title('Boxplot – Score Distributions for NES (Positive) and non-NES (Negative) Classes')
+#     # Adding labels and title
+#     plt.xlabel('Label')
+#     plt.ylabel('Score')
+#     plt.title('Boxplot – Score Distributions for NES (Positive) and non-NES (Negative) Classes')
 
-    # Display plot
-    plt.grid(True)
-    plt.savefig(out_file_path)
-    plt.close()
+#     # Display plot
+#     plt.grid(True)
+#     plt.savefig(out_file_path)
+#     plt.close()
 
 def main(model_type="EGNN"):
     # === Hyperparameters ===

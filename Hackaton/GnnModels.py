@@ -75,3 +75,5 @@ class EGNN(torch.nn.Module):
         # Classification layer
         x = self.fc(x)
         return F.log_softmax(x, dim=-1)
+
+

@@ -24,8 +24,6 @@ def classify_pdb(pdb_path, model_path="best_egnn_model.pth"):
     model.load_state_dict(torch.load(model_path, map_location=device))
     model = model.to(device)
     model.eval()
-
-    # Step 2.5: Add dummy batch for compatibility with model
     data.batch = torch.zeros(data.num_nodes, dtype=torch.long, device=device)
 
     # Step 3: Predict

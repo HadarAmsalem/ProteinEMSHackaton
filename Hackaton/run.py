@@ -4,9 +4,12 @@ import torch.nn.functional as F
 from torch_geometric.data import DataLoader
 from GnnModels import GCN, EGNN  # Make sure both are defined in your GnnModels.py
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_curve, auc
+import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-def train(model, train_loader, val_loader, epochs=100, lr=1e-3, patience=7, save_path="best_model.pth"):
+
+def train(model, train_loader, val_loader, epochs=100, lr=1e-3, patience=10, save_path="best_model.pth"):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -60,11 +63,15 @@ def train(model, train_loader, val_loader, epochs=100, lr=1e-3, patience=7, save
     model.load_state_dict(torch.load(save_path))
     return model
 
-def evaluate(model, loader, device):
+def evaluate(model, loader, device, plot_roc=True, roc_output_path="Hackaton/roc_curve.png"):
     model.eval()
     total_loss = 0
     correct = 0
     total = 0
+
+    all_probs = []  # for ROC
+    all_labels = []  # for ROC
+
     with torch.no_grad():
         for data in loader:
             data = data.to(device)
@@ -76,13 +83,25 @@ def evaluate(model, loader, device):
             if hasattr(data, 'batch'):
                 kwargs['batch'] = data.batch
             out = model(**kwargs)
+
+            # collect probability for class 1
+            prob_class_1 = torch.exp(out[:, 1])  # because output is log_softmax
+            all_probs.extend(prob_class_1.cpu().numpy())
+            all_labels.extend(data.y.cpu().numpy())
+
             loss = F.nll_loss(out, data.y)
             total_loss += loss.item() * data.num_graphs
             pred = out.argmax(dim=1)
             correct += (pred == data.y).sum().item()
             total += data.num_graphs
+
     avg_loss = total_loss / total
     acc = correct / total
+
+    if plot_roc:
+        plot_roc_curve(all_labels, all_probs, out_file_path=roc_output_path)
+        print(f"ROC curve saved to {roc_output_path}")
+
     return avg_loss, acc
 
 from PDB_to_graph_embbeding import parse_pdb_to_graph
@@ -115,6 +134,31 @@ def load_dataset():
             except Exception as e:
                 print(f"Skipping {path} due to error: {e}")
     return dataset
+
+def plot_roc_curve(y_test, y_scores, out_file_path="roc_curve.png"):
+    """
+    Plots a ROC curve of the negative and positive distances
+    :param y_test: True data labels (0 for negative, 1 for positive)
+    :param y_scores: Distances from the positive training peptides (multiplied by -1)
+    :param out_file_path: The path for the output png
+    """
+    fpr, tpr, thresholds = roc_curve(y_test, y_scores)
+    roc_auc = auc(fpr, tpr)
+    print(F"AUC: {roc_auc}")
+
+    # Plot ROC curve
+    plt.figure(figsize=(8, 6))
+    plt.plot(fpr, tpr, color='darkorange', lw=2,
+             label=f'ROC curve (area = {roc_auc:.2f})')
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic (ROC) Curve')
+    plt.legend(loc="lower right")
+    plt.grid(True)
+    plt.savefig(out_file_path)
 
 
 def main(model_type="EGNN"):  # "GCN" or "EGNN"

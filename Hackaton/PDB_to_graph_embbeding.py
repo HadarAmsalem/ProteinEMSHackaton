@@ -116,7 +116,7 @@ def parse_pdb_to_graph(pdb_path, visualize=False, chain_id='B', save_filtered_pd
     structure = parser.get_structure("filtered", filtered_file)
     if not save_filtered_pdb:
         os.remove(filtered_file)
-        
+
     ca_coords = []
     node_features = []
     nes_flags = []
@@ -189,6 +189,6 @@ def plot_graph(graph, nes_flags):
 
 
 # Example usage
-pdb_file = "structures/af_positives/pos_1F71_6CD7_al.pdb"  # Replace with your actual file path
-graph = parse_pdb_to_graph(pdb_file, visualize=True)
-print(graph)
+# pdb_file = "structures/af_positives/pos_1F71_6CD7_al.pdb"  # Replace with your actual file path
+# graph = parse_pdb_to_graph(pdb_file, visualize=True)
+# print(graph)

@@ -4,8 +4,9 @@ import torch.nn.functional as F
 from torch_geometric.data import DataLoader
 from GnnModels import GCN, EGNN  # Make sure both are defined in your GnnModels.py
 from sklearn.model_selection import train_test_split
+from tqdm import tqdm
 
-def train(model, train_loader, val_loader, epochs=50, lr=1e-3, patience=7, save_path="best_model.pth"):
+def train(model, train_loader, val_loader, epochs=100, lr=1e-3, patience=7, save_path="best_model.pth"):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -17,7 +18,8 @@ def train(model, train_loader, val_loader, epochs=50, lr=1e-3, patience=7, save_
         total_loss = 0
         correct = 0
         total = 0
-        for data in train_loader:
+        loop = tqdm(train_loader, desc=f"Epoch {epoch+1:02d}", leave=False)
+        for data in loop:
             data = data.to(device)
             optimizer.zero_grad()
             # Dynamically handle model signatures
@@ -36,6 +38,8 @@ def train(model, train_loader, val_loader, epochs=50, lr=1e-3, patience=7, save_
             pred = out.argmax(dim=1)
             correct += (pred == data.y).sum().item()
             total += data.num_graphs
+            loop.set_postfix(loss=loss.item()) 
+
         train_loss = total_loss / total
         train_acc = correct / total
 
@@ -81,13 +85,37 @@ def evaluate(model, loader, device):
     acc = correct / total
     return avg_loss, acc
 
+from PDB_to_graph_embbeding import parse_pdb_to_graph
+import os
+import torch
+
 def load_dataset():
     """
-    Replace with your actual dataset loading.
-    Must return a list of Data objects.
+    Loads all PDB files from 'dataset/positives' and 'dataset/negatives' directories.
+    Each file is parsed using parse_pdb_to_graph and labeled accordingly.
+    Returns a list of PyTorch Geometric Data objects.
     """
-    dataset = []  # Your parsed Data objects here
+    dataset = []
+    base_dir = "structures"  # Adjust this path to your dataset directory
+
+    label_map = {
+        "af_negatives": 0,
+        "af_positives": 1
+    }
+
+    for label_name, label_value in label_map.items():
+        folder = os.path.join(base_dir, label_name)
+        pdb_files = [f for f in os.listdir(folder) if f.endswith(".pdb")]
+        for fname in tqdm(pdb_files, desc=f"Loading {label_name}", unit="file"):
+            path = os.path.join(folder, fname)
+            try:
+                graph = parse_pdb_to_graph(path, visualize=False, chain_id='B', save_filtered_pdb=False)
+                graph.y = torch.tensor([label_value], dtype=torch.long)
+                dataset.append(graph)
+            except Exception as e:
+                print(f"Skipping {path} due to error: {e}")
     return dataset
+
 
 def main(model_type="EGNN"):  # "GCN" or "EGNN"
     dataset = load_dataset()

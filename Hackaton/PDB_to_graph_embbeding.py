@@ -90,7 +90,7 @@ def save_filtered_structure(original_structure, residues_to_keep, output_file):
     io.set_structure(original_structure)
     io.save(output_file, ResidueSelect(residues_to_keep))
 
-def parse_pdb_to_graph(pdb_path, visualize=False, chain_id='B'):
+def parse_pdb_to_graph(pdb_path, visualize=False, chain_id='B', save_filtered_pdb=False):
     """
     Parse a PDB file and convert the filtered structure into a PyTorch Geometric graph.
     
@@ -114,6 +114,9 @@ def parse_pdb_to_graph(pdb_path, visualize=False, chain_id='B'):
 
     # Parse filtered structure
     structure = parser.get_structure("filtered", filtered_file)
+    if not save_filtered_pdb:
+        os.remove(filtered_file)
+        
     ca_coords = []
     node_features = []
     nes_flags = []
@@ -125,7 +128,9 @@ def parse_pdb_to_graph(pdb_path, visualize=False, chain_id='B'):
                     ca = residue['CA']
                     ca_coords.append(ca.coord)
                     one_hot = residue_to_one_hot(residue.get_resname())
+                    # Create a flag for NES residues (chain B)
                     nes_flag = 1.0 if chain.id == chain_id else 0.0
+                    
                     node_features.append(np.concatenate([one_hot, [nes_flag]]))
                     nes_flags.append(nes_flag)
 

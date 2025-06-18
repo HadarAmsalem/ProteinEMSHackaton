@@ -38,7 +38,7 @@ pip install -r requirements.txt
 2. Run the classifier:
 
 ```bash
-python run_model_on_pdb.py examples/my_protein.pdb
+python user_main.py examples/my_protein.pdb
 ```
 
 3. The output will show (for example):

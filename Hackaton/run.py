@@ -73,14 +73,21 @@ def train(model, train_loader, val_loader, epochs=100, lr=1e-3, patience=10, sav
     model.load_state_dict(torch.load(save_path))
     return model
 
-def evaluate(model, loader, device, plot_roc=True, roc_output_path="Hackaton/roc_curve.png"):
+def evaluate(model, loader, device, 
+             plot_roc=True,
+             roc_output_path="Hackaton/roc_curve.png",
+             plot_box=True,
+             box_output_path="Hackaton/boxplot.png"):
     model.eval()
     total_loss = 0
     correct = 0
     total = 0
 
-    all_probs = []  # for ROC
-    all_labels = []  # for ROC
+    all_probs = []      # For ROC curve (predicted probabilities of class 1)
+    all_labels = []     # True labels
+
+    class_0_scores = []  # For boxplot: predicted scores for negative class (label 0)
+    class_1_scores = []  # For boxplot: predicted scores for positive class (label 1)
 
     with torch.no_grad():
         for data in loader:
@@ -92,12 +99,24 @@ def evaluate(model, loader, device, plot_roc=True, roc_output_path="Hackaton/roc
                 kwargs['pos'] = data.pos
             if hasattr(data, 'batch'):
                 kwargs['batch'] = data.batch
+
             out = model(**kwargs)
 
-            # collect probability for class 1
-            prob_class_1 = torch.exp(out[:, 1])  # because output is log_softmax
-            all_probs.extend(prob_class_1.cpu().numpy())
-            all_labels.extend(data.y.cpu().numpy())
+            # Extract probabilities of class 1 (from log_softmax output)
+            prob_class_1 = torch.exp(out[:, 1])
+            probs_np = prob_class_1.cpu().numpy()
+            labels_np = data.y.cpu().numpy()
+
+            # Store for ROC
+            all_probs.extend(probs_np)
+            all_labels.extend(labels_np)
+
+            # Separate probabilities by class for boxplot
+            for prob, label in zip(probs_np, labels_np):
+                if label == 0:
+                    class_0_scores.append(prob)
+                else:
+                    class_1_scores.append(prob)
 
             loss = F.nll_loss(out, data.y)
             total_loss += loss.item() * data.num_graphs
@@ -112,7 +131,14 @@ def evaluate(model, loader, device, plot_roc=True, roc_output_path="Hackaton/roc
         plot_roc_curve(all_labels, all_probs, out_file_path=roc_output_path)
         print(f"ROC curve saved to {roc_output_path}")
 
+    if plot_box:
+        # Prepare data for boxplot
+        data_dict = {"Negative (0)": class_0_scores, "Positive (1)": class_1_scores}
+        plot_boxplot(data_dict, out_file_path=box_output_path)
+        print(f"Boxplot saved to {box_output_path}")
+
     return avg_loss, acc
+
 
 from PDB_to_graph_embbeding import parse_pdb_to_graph
 
@@ -175,6 +201,32 @@ def plot_roc_curve(y_test, y_scores, out_file_path="roc_curve.png"):
     plt.grid(True)
     plt.savefig(out_file_path)
 
+def plot_boxplot(data_dict, out_file_path="boxplot.png"):
+    """
+    Plots a boxplot of the negative and positive distances
+    :param data_dict: Dictionary of positive and negative distances
+    :param out_file_path: The path for the output png
+    """
+    # Creating a list of data to plot
+    plot_data = [data_dict[key] for key in data_dict]
+
+    # Labels for x-axis ticks
+    labels = list(data_dict.keys())
+
+    # Creating boxplot
+    plt.figure(figsize=(10, 6))
+    plt.boxplot(plot_data, patch_artist=True, labels=labels)
+
+    # Adding labels and title
+    plt.xlabel('Label')
+    plt.ylabel('Score')
+    plt.title('Boxplot')
+
+    # Display plot
+    plt.grid(True)
+    plt.savefig(out_file_path)
+    plt.close()
+
 def main(model_type="EGNN"):
     # === Hyperparameters ===
     batch_size = 64
@@ -184,7 +236,7 @@ def main(model_type="EGNN"):
     patience = 10
 
     dataset = load_dataset()
-    # torch.manual_seed(42)
+    torch.manual_seed(42)
     labels = [d.y.item() for d in dataset]
     train_set, temp_set = train_test_split(dataset, test_size=0.3, stratify=labels, random_state=42)
     labels_temp = [d.y.item() for d in temp_set]

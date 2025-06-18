@@ -196,7 +196,7 @@ def plot_roc_curve(y_test, y_scores, out_file_path="roc_curve.png"):
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title('Receiver Operating Characteristic (ROC) Curve')
+    plt.title('ROC Curve – Evaluating Binary Classification of NES vs. non-NES Proteins')
     plt.legend(loc="lower right")
     plt.grid(True)
     plt.savefig(out_file_path)
@@ -220,7 +220,7 @@ def plot_boxplot(data_dict, out_file_path="boxplot.png"):
     # Adding labels and title
     plt.xlabel('Label')
     plt.ylabel('Score')
-    plt.title('Boxplot')
+    plt.title('Boxplot – Score Distributions for NES (Positive) and non-NES (Negative) Classes')
 
     # Display plot
     plt.grid(True)

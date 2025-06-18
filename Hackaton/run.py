@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 
-def train(model, train_loader, val_loader, epochs=100, lr=1e-3, patience=10, save_path="best_model.pth"):
+def train(model, train_loader, val_loader, epochs=100, lr=1e-3, patience=10, save_path="Hackaton/best_model.pth"):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -181,10 +181,10 @@ def main(model_type="EGNN"):  # "GCN" or "EGNN"
 
     if model_type == "GCN":
         model = GCN(num_features=num_features, hidden_dim=64, num_classes=2)
-        save_path = "best_gcn_model.pth"
+        save_path = "Hackaton/best_gcn_model.pth"
     elif model_type == "EGNN":
         model = EGNN(num_features=num_features, edge_feat_dim=edge_feat_dim, hidden_dim=64)
-        save_path = "best_egnn_model.pth"
+        save_path = "Hackaton/best_egnn_model.pth"
     else:
         raise ValueError("model_type must be 'GCN' or 'EGNN'")
 

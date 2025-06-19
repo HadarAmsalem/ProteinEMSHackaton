@@ -25,10 +25,16 @@ def get_esm_model(embedding_size=1280):
     model, alphabet = ESM_MODELS_DICT[embedding_size]()
     batch_converter = alphabet.get_batch_converter()
     model.eval()  # disables dropout for deterministic results
-    # check if GPU is available
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    
+    # Select device: MPS (Apple GPU) > CUDA > CPU
+    if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+        device = torch.device("mps")
+    elif torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
+
     model.to(device)
-    print(f"ESM model loaded to {device}")
     return model, alphabet, batch_converter, device
 
 

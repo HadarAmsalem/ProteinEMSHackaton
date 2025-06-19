@@ -10,6 +10,20 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from plot import plot_roc_curve, plot_boxplot
 
+# === Embeddings Hyperparameters ===
+ENCODING_TYPE = 'onehot'  # 'esm' for ESM embeddings, 'onehot' for one-hot encoding
+CHOSEN_EMBEDDING_SIZE = 640  # ESM embedding size (1280, 2560, 5120)
+CHOSEN_EMBEDDING_LAYER = 30
+CACHED_DATASET_NAME = "DB/cached_dataset_esm_{CHOSEN_EMBEDDING_SIZE}.pt" if ENCODING_TYPE == 'esm' else "DB/cached_dataset_onehot.pt"
+
+# === Hyperparameters ===
+batch_size = 64
+epochs = 100
+lr = 1e-3
+hidden_dim = 64
+patience = 10
+dropout = 0
+
 def prepare_gnn_input(data, model): 
     """ Prepares the input dictionary for various GNN models. Supports GCN, EGNN """ 
     kwargs = { 'x': data.x, 'edge_index': data.edge_index, } 
@@ -153,7 +167,7 @@ def evaluate(model, loader, device,
 
 from PDB_to_graph_embbeding import parse_pdb_to_graph
 
-def load_dataset(cache_path="DB/cached_dataset.pt"):
+def load_dataset(cache_path=CACHED_DATASET_NAME):
     """
     Loads all PDB files from 'structures/af_positives' and 'structures/af_negatives' directories.
     If a cached dataset file exists, it will load from it instead of parsing the PDB files.
@@ -176,7 +190,8 @@ def load_dataset(cache_path="DB/cached_dataset.pt"):
         for fname in tqdm(pdb_files, desc=f"Loading {label_name}", unit="file"):
             path = os.path.join(folder, fname)
             try:
-                graph = parse_pdb_to_graph(path, visualize=False, chain_id='B', save_filtered_pdb=False)
+                graph = parse_pdb_to_graph(path, visualize=False, chain_id='B', save_filtered_pdb=False,
+                encoding_type=ENCODING_TYPE,esm_embedding_size=CHOSEN_EMBEDDING_SIZE, esm_layer=CHOSEN_EMBEDDING_LAYER)
                 graph.y = torch.tensor([label_value], dtype=torch.long)
                 dataset.append(graph)
             except Exception as e:
@@ -187,14 +202,6 @@ def load_dataset(cache_path="DB/cached_dataset.pt"):
     return dataset
 
 def main(model_type="EGNN"):
-    # === Hyperparameters ===
-    batch_size = 64
-    epochs = 100
-    lr = 1e-3
-    hidden_dim = 64
-    patience = 10
-    dropout = 0
-
     dataset = load_dataset()
     torch.manual_seed(42)
     labels = [d.y.item() for d in dataset]

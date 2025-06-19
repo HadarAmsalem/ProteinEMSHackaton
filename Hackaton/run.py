@@ -11,7 +11,7 @@ from tqdm import tqdm
 from plot import plot_roc_curve, plot_boxplot
 
 # === Embeddings Hyperparameters ===
-ENCODING_TYPE = 'onehot'  # 'esm' for ESM embeddings, 'onehot' for one-hot encoding
+ENCODING_TYPE = 'esm'  # 'esm' for ESM embeddings, 'onehot' for one-hot encoding
 CHOSEN_EMBEDDING_SIZE = 640  # ESM embedding size (1280, 2560, 5120)
 CHOSEN_EMBEDDING_LAYER = 30
 CACHED_DATASET_NAME = "DB/cached_dataset_esm_{CHOSEN_EMBEDDING_SIZE}.pt" if ENCODING_TYPE == 'esm' else "DB/cached_dataset_onehot.pt"

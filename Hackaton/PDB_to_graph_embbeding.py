@@ -179,8 +179,3 @@ def plot_graph(graph, nes_flags):
     plt.tight_layout()
     plt.show()
 
-
-# Example usage
-# pdb_file = "structures/af_positives/pos_1F71_6CD7_al.pdb"  # Replace with your actual file path
-# graph = parse_pdb_to_graph(pdb_file, visualize=True)
-# print(graph)

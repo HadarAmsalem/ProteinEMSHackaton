@@ -56,18 +56,22 @@ class SimpleEGNNLayer(MessagePassing):
 
 
 class EGNN(torch.nn.Module):
-    def __init__(self, num_features, edge_feat_dim, hidden_dim, num_classes=2):
+    def __init__(self, num_features, edge_feat_dim, hidden_dim, num_classes=2,dropout=0):
         super(EGNN, self).__init__()
         self.egnn1 = SimpleEGNNLayer(num_features, edge_feat_dim, hidden_dim)
         self.egnn2 = SimpleEGNNLayer(num_features, edge_feat_dim, hidden_dim)
         self.fc = torch.nn.Linear(num_features, num_classes)
+        self.dropout = torch.nn.Dropout(dropout)
 
     def forward(self, x, edge_index, edge_attr, pos, batch):
         # EGNN layers updating node embeddings (positions could be updated similarly)
         x = self.egnn1(x, edge_index, edge_attr, pos)
         x = F.relu(x)
+        x = self.dropout(x)
         x = self.egnn2(x, edge_index, edge_attr, pos)
         x = F.relu(x)
+        x = self.dropout(x)
+
 
         # Pooling to graph-level embedding
         x = global_mean_pool(x, batch)

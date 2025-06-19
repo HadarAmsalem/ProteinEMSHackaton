@@ -31,7 +31,16 @@ def prepare_gnn_input(data, model):
 def train(model, train_loader, val_loader, epochs=100, lr=1e-3, patience=10, save_path="Hackaton/best_model.pth"):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+    # Option 1: Adam + weight decay
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
+
+    # Option 2: AdamW
+    # optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
+
+    # Option 3: SGD with momentum
+    # optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=1e-4)
+
     best_val_loss = float('inf')
     patience_counter = 0
 
@@ -177,58 +186,6 @@ def load_dataset(cache_path="DB/cached_dataset.pt"):
     print(f"Dataset cached to {cache_path}")
     return dataset
 
-
-# def plot_roc_curve(y_test, y_scores, out_file_path="roc_curve.png"):
-#     """
-#     Plots a ROC curve of the negative and positive distances
-#     :param y_test: True data labels (0 for negative, 1 for positive)
-#     :param y_scores: Distances from the positive training peptides (multiplied by -1)
-#     :param out_file_path: The path for the output png
-#     """
-#     fpr, tpr, thresholds = roc_curve(y_test, y_scores)
-#     roc_auc = auc(fpr, tpr)
-#     print(F"AUC: {roc_auc}")
-
-#     # Plot ROC curve
-#     plt.figure(figsize=(8, 6))
-#     plt.plot(fpr, tpr, color='darkorange', lw=2,
-#              label=f'ROC curve (area = {roc_auc:.2f})')
-#     plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
-#     plt.xlim([0.0, 1.0])
-#     plt.ylim([0.0, 1.05])
-#     plt.xlabel('False Positive Rate')
-#     plt.ylabel('True Positive Rate')
-#     plt.title('ROC Curve – Evaluating Binary Classification of NES vs. non-NES Proteins')
-#     plt.legend(loc="lower right")
-#     plt.grid(True)
-#     plt.savefig(out_file_path)
-
-# def plot_boxplot(data_dict, out_file_path="boxplot.png"):
-#     """
-#     Plots a boxplot of the negative and positive distances
-#     :param data_dict: Dictionary of positive and negative distances
-#     :param out_file_path: The path for the output png
-#     """
-#     # Creating a list of data to plot
-#     plot_data = [data_dict[key] for key in data_dict]
-
-#     # Labels for x-axis ticks
-#     labels = list(data_dict.keys())
-
-#     # Creating boxplot
-#     plt.figure(figsize=(10, 6))
-#     plt.boxplot(plot_data, patch_artist=True, labels=labels)
-
-#     # Adding labels and title
-#     plt.xlabel('Label')
-#     plt.ylabel('Score')
-#     plt.title('Boxplot – Score Distributions for NES (Positive) and non-NES (Negative) Classes')
-
-#     # Display plot
-#     plt.grid(True)
-#     plt.savefig(out_file_path)
-#     plt.close()
-
 def main(model_type="EGNN"):
     # === Hyperparameters ===
     batch_size = 64
@@ -236,6 +193,7 @@ def main(model_type="EGNN"):
     lr = 1e-3
     hidden_dim = 64
     patience = 10
+    dropout = 0
 
     dataset = load_dataset()
     torch.manual_seed(42)
@@ -256,7 +214,7 @@ def main(model_type="EGNN"):
         model = GCN(num_features=num_features, hidden_dim=hidden_dim, num_classes=2)
         save_path = "Hackaton/best_gcn_model.pth"
     elif model_type == "EGNN":
-        model = EGNN(num_features=num_features, edge_feat_dim=edge_feat_dim, hidden_dim=hidden_dim)
+        model = EGNN(num_features=num_features, edge_feat_dim=edge_feat_dim, hidden_dim=hidden_dim,dropout=dropout)
         save_path = "Hackaton/best_egnn_model.pth"
     else:
         raise ValueError("model_type must be 'GCN' or 'EGNN'")

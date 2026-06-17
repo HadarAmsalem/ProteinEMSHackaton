@@ -2,6 +2,19 @@
 
 This repository contains a trained Graph Neural Network (GNN)-based pipeline for detecting **Nuclear Export Signals (NES)** from protein 3D structures in `.pdb` format.
 
+# NES Detection using Graph Neural Networks
+
+Team project developed as part of a Protein Bioinformatics Hackathon at the Hebrew University of Jerusalem (Final Grade: 94).
+
+This project explores the use of Graph Neural Networks (GNNs) for detecting Nuclear Export Signals (NES) from protein 3D structures. The pipeline processes protein structures in PDB format, constructs residue-level graphs, and applies deep learning models for binary NES classification.
+
+**My contributions:**
+
+* Model development and evaluation.
+* Data processing and graph construction workflows.
+* Experimental analysis and performance assessment.
+
+
 ---
 
 ## User Manual
